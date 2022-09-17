@@ -13,6 +13,9 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
 
     /// @notice Total number of participants
     uint256 public immutable totalParticipants;
+    /// @notice Expected DAI winnings; claims are disabled if contract does not have at least
+    ///     this amount of DAI balance
+    uint256 public immutable expectedDaiWinnings;
     /// @notice DAI contract
     ERC20 public immutable dai;
     /// @notice Mapping of whether an address has claimed their redistribution share or not
@@ -26,11 +29,13 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
     constructor(
         address daiAddress,
         uint256 totalParticipants_,
+        uint256 expectedDaiWinnings_,
         uint256 claimExpiryTimestamp_,
         bytes32 merkleRoot
     ) Ownable() ImmutableInclusionVerifier(merkleRoot) {
         dai = ERC20(daiAddress);
         totalParticipants = totalParticipants_;
+        expectedDaiWinnings = expectedDaiWinnings_;
         claimExpiryTimestamp = claimExpiryTimestamp_;
     }
 
@@ -47,14 +52,14 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
             "Not part of the redistribution"
         );
 
-        uint256 daiBalance = dai.balanceOf(address(this));
-        // Weak safeguard: prevent people from claiming if the contract's Dai balance is empty
-        require(daiBalance > 0, "One minute of patience, ten years of peace");
-
         // Calculate claim amount first, before updating internal accounting
         uint256 participantsLeft = totalParticipants - claimooors.length;
         require(participantsLeft > 0);
         uint256 claimAmount = dai.balanceOf(address(this)) / participantsLeft;
+        require(
+            claimAmount * totalParticipants >= expectedDaiWinnings,
+            "Winnings are not yet loaded"
+        );
 
         // Internal effects
         hasClaimed[msg.sender] = true;
@@ -83,6 +88,11 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
     /// @notice Get number of claimoooors
     function getNumClaimooors() external view returns (uint256) {
         return claimooors.length;
+    }
+
+    /// @notice Returns true if participants can start claiming
+    function isClaimable() external view returns (bool) {
+        return dai.balanceOf(address(this)) >= expectedDaiWinnings;
     }
 
     /// @notice Withdraw balance of token from contract

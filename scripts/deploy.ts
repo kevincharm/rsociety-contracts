@@ -18,6 +18,7 @@ const merkleTree = new MerkleTree(attendeeAddresses, hashAddress, {
 
 const OPTIMISM_DAI_ADDR = '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1'
 const TOTAL_PARTICIPANTS = 1000
+const EXPECTED_DAI_WINNINGS = ethers.utils.parseEther('10000')
 const CLAIM_EXPIRY_TIMESTAMP_SECONDS = Math.ceil(addDays(new Date(), 7).getTime() / 1000)
 
 async function main() {
@@ -26,6 +27,7 @@ async function main() {
     await new RedistributionChef__factory(deployer).deploy(
         OPTIMISM_DAI_ADDR,
         TOTAL_PARTICIPANTS,
+        EXPECTED_DAI_WINNINGS,
         CLAIM_EXPIRY_TIMESTAMP_SECONDS,
         merkleTree.getHexRoot()
     )
