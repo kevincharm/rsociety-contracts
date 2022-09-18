@@ -51,7 +51,7 @@ const config: HardhatUserConfig = {
         apiKey: {
             mainnet: process.env.ETHERSCAN_API_KEY as string,
             goerli: process.env.ETHERSCAN_API_KEY as string,
-            optimism: process.env.OPTIMISTIC_ETHERSCAN_API_KEY as string,
+            optimisticEthereum: process.env.OPTIMISTIC_ETHERSCAN_API_KEY as string,
         },
     },
 }
