@@ -1,5 +1,5 @@
 import { ethers, run } from 'hardhat'
-import { RedistributionChef__factory } from '../typechain-types'
+import { MockDai__factory, RedistributionChef__factory } from '../typechain-types'
 import { addDays } from 'date-fns'
 import { MerkleTree } from 'merkletreejs'
 // @ts-ignore
@@ -17,7 +17,6 @@ const merkleTree = new MerkleTree(attendeeAddresses, hashAddress, {
     hashLeaves: true,
 })
 
-const OPTIMISM_DAI_ADDR = '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1'
 const TOTAL_PARTICIPANTS = 1000
 const EXPECTED_DAI_WINNINGS = ethers.utils.parseEther('10000')
 const CLAIM_EXPIRY_TIMESTAMP_SECONDS = Math.ceil(addDays(new Date(), 7).getTime() / 1000)
@@ -25,8 +24,12 @@ const CLAIM_EXPIRY_TIMESTAMP_SECONDS = Math.ceil(addDays(new Date(), 7).getTime(
 async function main() {
     const signers = await ethers.getSigners()
     const deployer = signers[0]
+    console.log('Deploying MockDAI...')
+    const mockDai = await new MockDai__factory(deployer).deploy()
+    await mockDai.deployed()
+    console.log(`Deployed MockDAI at ${mockDai.address}`)
     const redistChefConstructorArgs: [string, BigNumberish, BigNumberish, BigNumberish, string] = [
-        OPTIMISM_DAI_ADDR,
+        mockDai.address,
         TOTAL_PARTICIPANTS,
         EXPECTED_DAI_WINNINGS,
         CLAIM_EXPIRY_TIMESTAMP_SECONDS,
@@ -37,10 +40,18 @@ async function main() {
     )
     await redistChef.deployed()
     console.log(`Deployed RedistributionChef at ${redistChef.address}`)
+    const mintTx = await mockDai.mint(EXPECTED_DAI_WINNINGS)
+    await mintTx.wait(1)
+    const transferTx = await mockDai.transfer(redistChef.address, EXPECTED_DAI_WINNINGS)
+    await transferTx.wait(1)
 
     // Wait for deployments to finish
     await new Promise((resolve) => setTimeout(resolve, 120_000))
 
+    await run('verify:verify', {
+        address: mockDai.address,
+        constructorArguments: [],
+    })
     await run('verify:verify', {
         address: redistChef.address,
         constructorArguments: redistChefConstructorArgs,

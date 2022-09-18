@@ -1,5 +1,3 @@
-import * as dotenv from 'dotenv'
-
 import { HardhatUserConfig, task } from 'hardhat/config'
 import '@nomicfoundation/hardhat-toolbox'
 // import '@nomiclabs/hardhat-etherscan'
@@ -7,8 +5,6 @@ import '@nomicfoundation/hardhat-toolbox'
 // import '@typechain/hardhat'
 // import 'hardhat-gas-reporter'
 // import 'solidity-coverage'
-
-dotenv.config()
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
@@ -40,6 +36,11 @@ const config: HardhatUserConfig = {
             chainId: 10,
             accounts: [process.env.MAINNET_PK as string],
         },
+        goerli: {
+            url: process.env.GOERLI_URL as string,
+            chainId: 5,
+            accounts: [process.env.GOERLI_PK as string],
+        },
     },
     gasReporter: {
         enabled: true,
@@ -49,6 +50,7 @@ const config: HardhatUserConfig = {
     etherscan: {
         apiKey: {
             mainnet: process.env.ETHERSCAN_API_KEY as string,
+            goerli: process.env.ETHERSCAN_API_KEY as string,
             optimism: process.env.OPTIMISTIC_ETHERSCAN_API_KEY as string,
         },
     },
