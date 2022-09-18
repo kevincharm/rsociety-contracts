@@ -19,7 +19,6 @@ const merkleTree = new MerkleTree(attendeeAddresses, hashAddress, {
 
 const TOTAL_PARTICIPANTS = 1000
 const EXPECTED_DAI_WINNINGS = ethers.utils.parseEther('10000')
-const CLAIM_EXPIRY_TIMESTAMP_SECONDS = Math.ceil(addDays(new Date(), 7).getTime() / 1000)
 
 async function main() {
     const signers = await ethers.getSigners()
@@ -28,11 +27,10 @@ async function main() {
     const mockDai = await new MockDai__factory(deployer).deploy()
     await mockDai.deployed()
     console.log(`Deployed MockDAI at ${mockDai.address}`)
-    const redistChefConstructorArgs: [string, BigNumberish, BigNumberish, BigNumberish, string] = [
+    const redistChefConstructorArgs: [string, BigNumberish, BigNumberish, string] = [
         mockDai.address,
         TOTAL_PARTICIPANTS,
         EXPECTED_DAI_WINNINGS,
-        CLAIM_EXPIRY_TIMESTAMP_SECONDS,
         merkleTree.getHexRoot(),
     ]
     const redistChef = await new RedistributionChef__factory(deployer).deploy(

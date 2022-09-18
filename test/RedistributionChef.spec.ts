@@ -67,12 +67,12 @@ describe('RedistributionChef', () => {
             mockDai.address,
             1000,
             ethers.utils.parseEther('10000'),
-            claimExpiryTimestamp,
             merkleTree.getHexRoot()
         )
         const prizeAmount = ethers.utils.parseEther('10000')
         await mockDai.mint(prizeAmount)
         await mockDai.transfer(redistChef.address, prizeAmount)
+        await redistChef.startClaimTimer()
         expect(await mockDai.balanceOf(redistChef.address)).to.equal(prizeAmount)
     })
 
@@ -114,11 +114,11 @@ describe('RedistributionChef', () => {
                 mockDai.address,
                 1000,
                 ethers.utils.parseEther('10000'),
-                claimExpiryTimestamp,
                 merkleTree.getHexRoot()
             )
             // Seed contract with not enough DAI
             await mockDai.mint(ethers.utils.parseEther('9999'))
+            await redistChef.startClaimTimer()
 
             const proof = merkleTree.getHexProof(hashAddress(randomParticipant._address))
             await expect(redistChef.connect(randomParticipant).claim(proof)).to.be.revertedWith(
@@ -138,11 +138,11 @@ describe('RedistributionChef', () => {
                 mockDai.address,
                 1000,
                 ethers.utils.parseEther('10000'),
-                claimExpiryTimestamp,
                 merkleTree.getHexRoot()
             )
             // Seed contract with not enough DAI
             await mockDai.mint(ethers.utils.parseEther('9999'))
+            await redistChef.startClaimTimer()
 
             expect(await redistChef.isClaimable()).to.equal(false)
         })
@@ -236,6 +236,26 @@ describe('RedistributionChef', () => {
             await redistChef.rescueTokens(mockDai.address)
             expect(await mockDai.balanceOf(deployer.address)).to.equal(
                 balanceBefore.add(ethers.utils.parseEther('10000'))
+            )
+        })
+
+        it('should allow withdrawing DAI if contract is not loaded with enough DAI', async () => {
+            // Re-deploy redist chef
+            redistChef = await new RedistributionChef__factory(deployer).deploy(
+                mockDai.address,
+                1000,
+                ethers.utils.parseEther('10000'),
+                merkleTree.getHexRoot()
+            )
+            // Seed contract with not enough DAI
+            const notEnoughAmount = ethers.utils.parseEther('5000')
+            await mockDai.mint(notEnoughAmount)
+            await mockDai.transfer(redistChef.address, notEnoughAmount)
+
+            const balanceBefore = await mockDai.balanceOf(deployer.address)
+            await redistChef.rescueTokens(mockDai.address)
+            expect(await mockDai.balanceOf(deployer.address)).to.equal(
+                balanceBefore.add(notEnoughAmount)
             )
         })
     })

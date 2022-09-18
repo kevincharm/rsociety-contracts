@@ -86,25 +86,33 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
     address[] public claimooors;
     /// @notice The timestamp after which it will be possible for claimoooooors to claim
     ///     the remaining unclaimed Dai in the contract
-    uint256 public immutable claimExpiryTimestamp;
+    uint256 public claimExpiryTimestamp;
 
     constructor(
         address daiAddress,
         uint256 totalParticipants_,
         uint256 expectedDaiWinnings_,
-        uint256 claimExpiryTimestamp_,
         bytes32 merkleRoot
     ) Ownable() ImmutableInclusionVerifier(merkleRoot) {
         dai = ERC20(daiAddress);
         totalParticipants = totalParticipants_;
         expectedDaiWinnings = expectedDaiWinnings_;
-        claimExpiryTimestamp = claimExpiryTimestamp_;
+    }
+
+    /// @notice Start timer for claims expiry
+    function startClaimTimer() external {
+        require(claimExpiryTimestamp == 0, "Expiry already set");
+        claimExpiryTimestamp = block.timestamp + 7 days;
     }
 
     /// @notice Claim your redistribution share. Only call this function after the DAI winnings
     ///     have been deposited to this contract. You can only call this function once per address.
     /// @param proof Proof of inclusion of caller in the merkle tree
     function claim(bytes32[] calldata proof) external {
+        require(
+            claimExpiryTimestamp != 0,
+            "Expiry not set, claims not started"
+        );
         require(
             !hasClaimed[msg.sender],
             "There is no greater guilt than discontentment"
@@ -115,9 +123,7 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
         );
 
         // Calculate claim amount first, before updating internal accounting
-        uint256 participantsLeft = totalParticipants - claimooors.length;
-        require(participantsLeft > 0);
-        uint256 claimAmount = dai.balanceOf(address(this)) / participantsLeft;
+        uint256 claimAmount = calculatePerAddressClaimAmount();
         require(
             claimAmount * totalParticipants >= expectedDaiWinnings,
             "Winnings are not yet loaded"
@@ -129,6 +135,14 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
 
         // External interaction: transfer calculated Dai claim to caller
         dai.safeTransfer(msg.sender, claimAmount);
+    }
+
+    /// @notice Calculate the amount of Dai each participant can claim
+    function calculatePerAddressClaimAmount() private view returns (uint256) {
+        uint256 participantsLeft = totalParticipants - claimooors.length;
+        require(participantsLeft > 0);
+        uint256 claimAmount = dai.balanceOf(address(this)) / participantsLeft;
+        return claimAmount;
     }
 
     /// @notice Redistribute remaining Dai in the contract, available after some
@@ -154,7 +168,10 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
 
     /// @notice Returns true if participants can start claiming
     function isClaimable() external view returns (bool) {
-        return dai.balanceOf(address(this)) >= expectedDaiWinnings;
+        return
+            claimExpiryTimestamp != 0 &&
+            calculatePerAddressClaimAmount() * totalParticipants >=
+            expectedDaiWinnings;
     }
 
     /// @notice Withdraw balance of token from contract
@@ -164,8 +181,13 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
             address(dai) &&
             block.timestamp > claimExpiryTimestamp &&
             claimooors.length == 0;
+        bool isUninitialised = tokenAddress == address(dai) &&
+            claimExpiryTimestamp == 0 &&
+            dai.balanceOf(address(this)) < expectedDaiWinnings;
         require(
-            tokenAddress != address(dai) || claimExpiredAndNobodyClaimedWinnings
+            tokenAddress != address(dai) ||
+                claimExpiredAndNobodyClaimedWinnings ||
+                isUninitialised
         );
         ERC20 token = ERC20(tokenAddress);
         token.safeTransfer(msg.sender, token.balanceOf(address(this)));
@@ -173,9 +195,7 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
 
     /// @notice Rescue ETH force-sent to contract
     function rescueETH() external onlyOwner {
-        (bool sent, bytes memory data) = msg.sender.call{
-            value: address(this).balance
-        }("");
+        (bool sent, ) = msg.sender.call{value: address(this).balance}("");
         require(sent);
     }
 }
