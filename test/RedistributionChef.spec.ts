@@ -104,8 +104,10 @@ describe('RedistributionChef', () => {
                 'Not part of the redistribution'
             )
         })
+    })
 
-        it('should reject claim if total winnings is below expected total winnings', async () => {
+    describe('#startClaimTimer', () => {
+        it('should not allow starting claim timer if total winnings is below expected total winnings', async () => {
             const randomParticipant = participants[Math.floor(Math.random() * participants.length)]
             await fundAccount(randomParticipant._address)
 
@@ -118,11 +120,8 @@ describe('RedistributionChef', () => {
             )
             // Seed contract with not enough DAI
             await mockDai.mint(ethers.utils.parseEther('9999'))
-            await redistChef.startClaimTimer()
-
-            const proof = merkleTree.getHexProof(hashAddress(randomParticipant._address))
-            await expect(redistChef.connect(randomParticipant).claim(proof)).to.be.revertedWith(
-                'Winnings are not yet loaded'
+            await expect(redistChef.startClaimTimer()).to.be.revertedWith(
+                'Winnings have not yet been deposited'
             )
         })
     })
@@ -132,7 +131,7 @@ describe('RedistributionChef', () => {
             expect(await redistChef.isClaimable()).to.equal(true)
         })
 
-        it('should NOT be claimable if enough DAI balance in contract', async () => {
+        it('should NOT be claimable if enough NOT DAI balance in contract', async () => {
             // Re-deploy redist contract with no DAI balance
             redistChef = await new RedistributionChef__factory(deployer).deploy(
                 mockDai.address,
@@ -142,7 +141,6 @@ describe('RedistributionChef', () => {
             )
             // Seed contract with not enough DAI
             await mockDai.mint(ethers.utils.parseEther('9999'))
-            await redistChef.startClaimTimer()
 
             expect(await redistChef.isClaimable()).to.equal(false)
         })

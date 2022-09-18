@@ -101,6 +101,10 @@ contract RedistributionChef is ImmutableInclusionVerifier, Ownable {
 
     /// @notice Start timer for claims expiry
     function startClaimTimer() external {
+        require(
+            dai.balanceOf(address(this)) >= expectedDaiWinnings,
+            "Winnings have not yet been deposited"
+        );
         require(claimExpiryTimestamp == 0, "Expiry already set");
         claimExpiryTimestamp = block.timestamp + 7 days;
     }
