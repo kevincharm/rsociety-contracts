@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "deploy:goerli": "yarn hardhat --network goerli run scripts/deploy-goerli.ts",
-    "deploy:optimism": "yarn hardhat --network optimism run scripts/deploy.ts"
+    "deploy:goerli": "yarn hardhat compile && yarn hardhat --network goerli run scripts/deploy-goerli.ts",
+    "deploy:optimism": "yarn hardhat compile && yarn hardhat --network optimism run scripts/deploy.ts"
   },
   "repository": {
     "type": "git",
